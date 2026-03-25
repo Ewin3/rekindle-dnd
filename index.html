@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rekindle 5e: All Books</title>
+    <style>
+        body { font-family: 'Courier New', monospace; background: white; color: black; margin: 0; padding: 10px; }
+        h1 { border-bottom: 3px solid black; font-size: 20px; }
+        input { width: 60%; padding: 12px; border: 3px solid black; font-size: 18px; }
+        button { padding: 12px; background: black; color: white; border: none; font-weight: bold; }
+        .item { border: 2px solid black; padding: 10px; margin: 8px 0; position: relative; }
+        .source { font-size: 10px; background: black; color: white; padding: 2px 5px; position: absolute; top: 0; right: 0; }
+        #status { font-size: 12px; background: #eee; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; }
+        #dice-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: white; border-top: 4px solid black; padding: 10px; display: flex; justify-content: space-around; box-sizing: border-box; }
+        .dice { border: 2px solid black; padding: 8px; min-width: 40px; text-align: center; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>5E ALL-BOOKS REFERENCE</h1>
+    <div id="status">Ready to load...</div>
+    
+    <input type="text" id="search" placeholder="Search name...">
+    <button onclick="runSearch()">SEARCH</button>
+
+    <div id="results"></div>
+
+    <div id="dice-bar">
+        <div class="dice" onclick="roll(4)">d4</div>
+        <div class="dice" onclick="roll(6)">d6</div>
+        <div class="dice" onclick="roll(8)">d8</div>
+        <div class="dice" onclick="roll(10)">d10</div>
+        <div class="dice" onclick="roll(12)">d12</div>
+        <div class="dice" onclick="roll(20)">d20</div>
+        <div id="roll-val" style="font-size: 24px; font-weight: bold;">--</div>
+    </div>
+
+    <script>
+        let db = [];
+        const PROXY = "https://api.allorigins.win";
+        const BASE = "https://raw.githubusercontent.com";
+
+        // LIST OF ALL CORE BOOKS
+        const sources = [
+            // Spells
+            "spells/spells-phb.json", "spells/spells-xge.json", "spells/spells-tce.json", "spells/spells-ftd.json", "spells/spells-idrotf.json",
+            // Monsters (Bestiary)
+            "bestiary/bestiary-mm.json", "bestiary/bestiary-vgm.json", "bestiary/bestiary-mtf.json", "bestiary/bestiary-mpmm.json", "bestiary/bestiary-ftd.json", "bestiary/bestiary-bam.json"
+        ];
+
+        async function loadAll() {
+            const status = document.getElementById('status');
+            for (let path of sources) {
+                status.innerText = `Loading: ${path.split('/').pop()}...`;
+                try {
+                    const res = await fetch(PROXY + encodeURIComponent(BASE + path));
+                    const data = await res.json();
+                    // Extract spells or monsters from the file
+                    const items = data.spell || data.monster || [];
+                    db.push(...items.map(i => ({
+                        name: i.name,
+                        source: i.source,
+                        type: data.spell ? "Spell" : "Monster",
+                        meta: data.spell ? `Lvl ${i.level}` : `CR ${i.cr?.cr || i.cr || '?'}`
+                    })));
+                } catch (e) { console.error("Error loading " + path); }
+            }
+            status.innerText = `DONE: ${db.length} items loaded from ${sources.length} books.`;
+        }
+
+        function runSearch() {
+            const q = document.getElementById('search').value.toLowerCase();
+            if (!q) return;
+            const found = db.filter(i => i.name.toLowerCase().includes(q)).slice(0, 20);
+            let html = '';
+            found.forEach(i => {
+                html += `<div class="item">
+                    <span class="source">${i.source}</span>
+                    <strong>${i.name}</strong><br>
+                    <small>${i.type} | ${i.meta}</small>
+                </div>`;
+            });
+            document.getElementById('results').innerHTML = html || "No results found.";
+        }
+
+        function roll(s) {
+            document.getElementById('roll-val').innerText = Math.floor(Math.random() * s) + 1;
+        }
+
+        loadAll();
+    </script>
+</body>
+</html>
